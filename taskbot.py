@@ -4,13 +4,12 @@ import json
 import requests
 import time
 import urllib
-
+import os
 import sqlalchemy
-
 import db
 from db import Task
 
-TOKEN = ""
+TOKEN = os.environ.get('MY_API_KEY', None)
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 HELP = """
@@ -358,4 +357,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
