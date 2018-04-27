@@ -14,6 +14,26 @@
 em forma de issue no repositório do time
 
 # Instalando dependências
+
 ```
 $ pip install -r requirements.txt
+```
+
+# Adicionando o token no bash
+Abra o bashrc:
+
+```
+$ sudo nano ~/.bashrc
+```
+
+E inclua a seguinte linha:
+
+```
+export MY_API_KEY=(coloque o token do seu bot aqui)
+```
+
+E então salve o arquivo, reinicie seu terminal ou digite a seguinte linha no terminal:
+
+```
+$ source ~/.bashrc
 ```
