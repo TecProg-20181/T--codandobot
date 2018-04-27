@@ -13,3 +13,7 @@
 - As oportunidades de refatoração que a equipe encontrar, deve ser cadastrada
 em forma de issue no repositório do time
 
+# Instalando dependências
+```
+$ pip install -r requirements.txt
+```
