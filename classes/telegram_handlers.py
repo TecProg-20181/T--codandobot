@@ -100,10 +100,6 @@ class Handler(object):
     def rename(cls, bot, update, args):
         text_rename = args[1]
         text = args[0]
-        if text != '':
-            if len(text.split(' ', 1)) > 1:
-                text_rename = text.split(' ', 1)[1]
-            text = text.split(' ', 1)[0]
 
         if text.isdigit():
             task_id = int(text)
@@ -300,13 +296,8 @@ class Handler(object):
 
     @classmethod
     def dependson(cls, bot, update, args):
-        text_rename = ''
+        text_rename = args[1]
         text = args[0]
-        if text != '':
-            if len(text.split(' ', 1)) > 1:
-                text_rename = text.split(' ', 1)[1]
-            text = text.split(' ', 1)[0]
-
         if text.isdigit():
             task_id = int(text)
             query = db.session.query(Task).filter_by(
@@ -333,13 +324,12 @@ class Handler(object):
                                  text="Dependencies removed from task {}"
                                  .format(task_id))
             else:
-                for depid in args:
-                    if not depid.isdigit():
-                        bot.send_message(
-                            chat_id=update.message.chat_id,
-                            text="All dependencies ids must be numeric, and not {}"
-                            .format(depid))
-                    else:
+                depids = args
+                LOGGER.info("depids {}".format(depids))
+                LOGGER.info("depids next {}".format(depids[1:]))
+
+                for depid in depids[1:]:
+                    if depid.isdigit():
                         depid = int(depid)
                         query = db.session.query(Task).filter_by(id=depid,
                                                                  chat=update.message.chat_id)
@@ -354,8 +344,14 @@ class Handler(object):
                             continue
 
                         deplist = task.dependencies.split(',')
+                        LOGGER.info("Deplist {}".format(deplist))
                         if str(depid) not in deplist:
                             task.dependencies += str(depid) + ','
+                    else:
+                        bot.send_message(
+                            chat_id=update.message.chat_id,
+                            text="All dependencies ids must be numeric, and not {}"
+                            .format(depid))
 
             db.session.commit()
             bot.send_message(

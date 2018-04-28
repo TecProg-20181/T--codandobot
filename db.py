@@ -24,8 +24,8 @@ class Task(Base):
     duedate = Column(Date)
 
     def __repr__(self):
-        return "<Task(id={}, chat={}, name='{}', status='{}', priority='{}')>".format(
-            self.id, self.chat, self.name, self.status, self.priority
+        return "<Task(id={}, chat={}, name='{}', status='{}', priority='{}', dependencies='{}')>".format(
+            self.id, self.chat, self.name, self.status, self.priority, self.dependencies
         )
 
 Base.metadata.create_all(engine)
