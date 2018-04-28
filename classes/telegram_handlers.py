@@ -2,22 +2,23 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import sqlalchemy
 import logging
+import sqlalchemy
 from db import Task
 import db
 
 HELP = """
- /new NOME
+ /new NAME
  /todo ID
  /doing ID
  /done ID
  /delete ID
  /list
- /rename ID NOME
+ /rename ID NAME
  /dependson ID ID...
  /duplicate ID
  /priority ID PRIORITY{low, medium, high}
+ /show_priority
  /help
 """
 
@@ -85,22 +86,15 @@ class Handler(object):
     @classmethod
     def echo(cls, bot, update):
         bot.send_message(chat_id=update.message.chat_id,
-                         text="I'm sorry, {}. I'm afraid I can't do that."
-                         .format(cls.get_name(update)))
+                         text="I'm sorry, {}. I'm afraid I can't do {}."
+                         .format(cls.get_name(update), update.message.text))
         bot.send_message(chat_id=update.message.chat_id, text="{}".format(HELP))
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=update.message.text)
 
     @classmethod
     def help(cls, bot, update):
         bot.send_message(chat_id=update.message.chat_id,
                          text="Welcome! Here is a list of things you can do.")
         bot.send_message(chat_id=update.message.chat_id, text="{}".format(HELP))
-
-    @classmethod
-    def caps(cls, bot, update, text):
-        text_caps = ' '.join(text).upper()
-        bot.send_message(chat_id=update.message.chat_id, text=text_caps)
 
     @classmethod
     def rename(cls, bot, update, args):
@@ -267,9 +261,9 @@ class Handler(object):
 
     @classmethod
     def list(cls, bot, update):
-        a = ''
+        message = ''
 
-        a += '📋 Task List\n'
+        message += '📋 Task List\n'
         query = db.session.query(Task).filter_by(
             parents='', chat=update.message.chat_id).order_by(Task.id)
         for task in query.all():
@@ -279,30 +273,30 @@ class Handler(object):
             elif task.status == 'DONE':
                 icon = '✔️'
 
-            a += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-            a += cls.deps_text(task, update.message.chat_id)
+            message += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
+            message += cls.deps_text(task, update.message.chat_id)
 
-        bot.send_message(chat_id=update.message.chat_id, text=a)
-        a = ''
+        bot.send_message(chat_id=update.message.chat_id, text=message)
+        message = ''
 
-        a += '📝 _Status_\n'
+        message += '📝 _Status_\n'
         query = db.session.query(Task).filter_by(
             status='TODO', chat=update.message.chat_id).order_by(Task.id)
-        a += '\n🆕 *TODO*\n'
+        message += '\n🆕 *TODO*\n'
         for task in query.all():
-            a += '[[{}]] {}\n'.format(task.id, task.name)
+            message += '[[{}]] {}\n'.format(task.id, task.name)
         query = db.session.query(Task).filter_by(
             status='DOING', chat=update.message.chat_id).order_by(Task.id)
-        a += '\n🔘 *DOING*\n'
+        message += '\n🔘 *DOING*\n'
         for task in query.all():
-            a += '[[{}]] {}\n'.format(task.id, task.name)
+            message += '[[{}]] {}\n'.format(task.id, task.name)
         query = db.session.query(Task).filter_by(
             status='DONE', chat=update.message.chat_id).order_by(Task.id)
-        a += '\n✔️ *DONE*\n'
+        message += '\n✔️ *DONE*\n'
         for task in query.all():
-            a += '[[{}]] {}\n'.format(task.id, task.name)
+            message += '[[{}]] {}\n'.format(task.id, task.name)
 
-        bot.send_message(chat_id=update.message.chat_id, text=a)
+        bot.send_message(chat_id=update.message.chat_id, text=message)
 
     @classmethod
     def dependson(cls, bot, update, args):
@@ -313,10 +307,7 @@ class Handler(object):
                 text_rename = text.split(' ', 1)[1]
             text = text.split(' ', 1)[0]
 
-        if not text.isdigit():
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
-        else:
+        if text.isdigit():
             task_id = int(text)
             query = db.session.query(Task).filter_by(
                 id=task_id, chat=update.message.chat_id)
@@ -331,10 +322,10 @@ class Handler(object):
             if text_rename == '':
                 for i in task.dependencies.split(',')[:-1]:
                     i = int(i)
-                    q = db.session.query(Task).filter_by(
+                    query_loop = db.session.query(Task).filter_by(
                         id=i, chat=update.message.chat_id)
-                    t = q.one()
-                    t.parents = t.parents.replace(
+                    task_loop = query_loop.one()
+                    task_loop.parents = task_loop.parents.replace(
                         '{},'.format(task.id), '')
 
                 task.dependencies = ''
@@ -351,7 +342,7 @@ class Handler(object):
                     else:
                         depid = int(depid)
                         query = db.session.query(Task).filter_by(id=depid,
-                                                     chat=update.message.chat_id)
+                                                                 chat=update.message.chat_id)
                         try:
                             taskdep = query.one()
                             taskdep.parents += str(task.id) + ','
@@ -370,6 +361,9 @@ class Handler(object):
             bot.send_message(
                 chat_id=update.message.chat_id,
                 text="Task {} dependencies up to date".format(task_id))
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="You must inform the task id")
 
     @classmethod
     def priority(cls, bot, update, args):
@@ -410,3 +404,16 @@ class Handler(object):
                                      text="*Task {}* priority has priority *{}*"
                                      .format(task_id, text_rename.lower()))
             db.session.commit()
+
+    @classmethod
+    def show_priority(cls, bot, update):
+        message = ''
+        query = db.session.query(Task).filter_by(chat=update.message.chat_id).order_by(Task.id)
+        for task in query.all():
+            if task.priority == '':
+                message += "[[{}]] {} doesn't have priority {}\n".format(task.id, task.name.upper(),
+                                                                         task.priority.upper())
+            else:
+                message += '[[{}]] {} | priority {}\n'.format(task.id, task.name.upper(),
+                                                              task.priority.upper())
+        bot.send_message(chat_id=update.message.chat_id, text=message)

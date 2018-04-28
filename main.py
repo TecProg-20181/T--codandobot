@@ -26,6 +26,7 @@ def main():
                                       pass_args=True)
     dependson_handler = CommandHandler('dependson', Handler().dependson,
                                        pass_args=True)
+    show_priority_handler = CommandHandler('show_priority', Handler().show_priority)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(help_handler)
     dispatcher.add_handler(new_handler)
@@ -39,6 +40,7 @@ def main():
     dispatcher.add_handler(list_handler)
     dispatcher.add_handler(dependson_handler)
     dispatcher.add_handler(priority_handler)
+    dispatcher.add_handler(show_priority_handler)
 
     updater.start_polling()
 
