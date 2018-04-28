@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import os
 from telegram.ext import CommandHandler, Updater
@@ -16,13 +15,17 @@ def main():
     echo_handler = MessageHandler(Filters.text, Handler().echo)
     new_handler = CommandHandler('new', Handler().new, pass_args=True)
     rename_handler = CommandHandler('rename', Handler().rename, pass_args=True)
-    duplicate_handler = CommandHandler('duplicate', Handler().duplicate, pass_args=True)
+    duplicate_handler = CommandHandler('duplicate', Handler().duplicate,
+                                       pass_args=True)
     delete_handler = CommandHandler('delete', Handler().delete, pass_args=True)
     todo_handler = CommandHandler('todo', Handler().todo, pass_args=True)
     doing_handler = CommandHandler('doing', Handler().doing, pass_args=True)
     done_handler = CommandHandler('done', Handler().done, pass_args=True)
     list_handler = CommandHandler('list', Handler().list)
-    dependson_handler = CommandHandler('dependson', Handler().dependson, pass_args=True)
+    priority_handler = CommandHandler('priority', Handler().priority,
+                                      pass_args=True)
+    dependson_handler = CommandHandler('dependson', Handler().dependson,
+                                       pass_args=True)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(help_handler)
     dispatcher.add_handler(new_handler)
@@ -35,6 +38,7 @@ def main():
     dispatcher.add_handler(done_handler)
     dispatcher.add_handler(list_handler)
     dispatcher.add_handler(dependson_handler)
+    dispatcher.add_handler(priority_handler)
 
     updater.start_polling()
 
