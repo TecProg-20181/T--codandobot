@@ -325,8 +325,8 @@ class Handler(object):
                                  .format(task_id))
             else:
                 depids = args
-                LOGGER.info("depids {}".format(depids))
-                LOGGER.info("depids next {}".format(depids[1:]))
+                LOGGER.info("depids %s", depids)
+                LOGGER.info("depids next %s", depids[1:])
 
                 for depid in depids[1:]:
                     if depid.isdigit():
@@ -344,7 +344,7 @@ class Handler(object):
                             continue
 
                         deplist = task.dependencies.split(',')
-                        LOGGER.info("Deplist {}".format(deplist))
+                        LOGGER.info("Deplist %s", deplist)
                         if str(depid) not in deplist:
                             task.dependencies += str(depid) + ','
                     else:
