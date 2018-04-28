@@ -274,7 +274,7 @@ class Handler(object):
                 icon = '✔️'
 
             message += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-            message += cls.deps_text(task, update.message.chat_id)
+            # message += cls.deps_text(cls,task=task, chat=update.message.chat_id)
 
         bot.send_message(chat_id=update.message.chat_id, text=message)
         message = ''
@@ -300,7 +300,7 @@ class Handler(object):
 
     @classmethod
     def dependson(cls, bot, update, args):
-        text_rename = args[1]
+        text_rename = ''
         text = args[0]
         if text != '':
             if len(text.split(' ', 1)) > 1:
@@ -333,7 +333,7 @@ class Handler(object):
                                  text="Dependencies removed from task {}"
                                  .format(task_id))
             else:
-                for depid in text.split(' '):
+                for depid in args:
                     if not depid.isdigit():
                         bot.send_message(
                             chat_id=update.message.chat_id,
