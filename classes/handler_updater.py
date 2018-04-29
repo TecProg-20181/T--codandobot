@@ -29,6 +29,8 @@ class HandlerUpdater(object):
             command_handler = CommandHandler('start', handler.start)
         elif task_command == 'help_handler':
             command_handler = CommandHandler('help', handler.help)
+        elif task_command == 'help_github_token_handler':
+            command_handler = CommandHandler('help_github_token', handler.help_github_token)
         elif task_command == 'echo_handler':
             command_handler = MessageHandler(Filters.text, handler.echo)
         elif task_command == 'show_priority_handler':
@@ -76,6 +78,7 @@ class HandlerUpdater(object):
         self.dispatcher.add_handler(self.__command_handlers_pass_args('priority_handler'))
         self.dispatcher.add_handler(self.__command_handlers_github('my_github_token_handler'))
         self.dispatcher.add_handler(self.__command_handlers_github('send_issue_handler'))
+        self.dispatcher.add_handler(self.__command_handlers_show('help_github_token_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('show_priority_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('start_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('help_handler'))

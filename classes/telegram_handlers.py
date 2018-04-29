@@ -9,6 +9,8 @@ from db import GithubIssueTable
 import db
 from classes.github_issue import GithubIssue
 
+TUTORIAL = "https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/"
+
 HELP = """
  /new NAME
  /todo ID
@@ -24,6 +26,7 @@ HELP = """
  /my_github_token
  /send_issue TODOID {github repo} {github organization} {issue body}
  /help
+ /help_github_token
 """
 
 FORMAT = '%(asctime)s -- %(levelname)s -- %(module)s %(lineno)d -- %(message)s'
@@ -79,7 +82,10 @@ class Handler(object):
 
     @classmethod
     def new(cls, bot, update, args):
-        task = Task(chat=update.message.chat_id, name='{}'.format(args[0]),
+        text = ''
+        for each_word in range(len(args)):
+            text += args[each_word] + ' '
+        task = Task(chat=update.message.chat_id, name='{}'.format(text),
                     status='TODO', dependencies='', parents='', priority='')
         db.session.add(task)
         db.session.commit()
@@ -99,6 +105,11 @@ class Handler(object):
         bot.send_message(chat_id=update.message.chat_id,
                          text="Welcome! Here is a list of things you can do.")
         bot.send_message(chat_id=update.message.chat_id, text="{}".format(HELP))
+
+    @classmethod
+    def help_github_token(cls, bot, update):
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="To get your token, follow this tutorial:\n{}".format(TUTORIAL))
 
     @classmethod
     def rename(cls, bot, update, args):
@@ -432,8 +443,9 @@ class Handler(object):
     def send_issue(cls, bot, update, args):
         task_id = args[0]
         repo_name = args[1]
-        issue_body = args[3]
         organization = args[2]
+        for each_word in range(len(args[3:])):
+            issue_body += args[each_word] + ' '
 
         if task_id.isdigit():
             task_id = int(task_id)

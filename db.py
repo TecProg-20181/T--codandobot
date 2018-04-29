@@ -22,11 +22,10 @@ class Task(Base):
     parents = Column(String)
     priority = Column(String)
     duedate = Column(Date)
-    token = Column(Integer)
 
     def __repr__(self):
-        return "<Task(id={}, chat={}, name='{}', status='{}', priority='{}', dependencies='{}')>"
-            .format(self.id, self.chat, self.name, self.status, self.priority, self.dependencies
+        return "<Task(id={}, chat={}, name='{}', status='{}', priority='{}', dependencies='{}')>".format(
+            self.id, self.chat, self.name, self.status, self.priority, self.dependencies
         )
 
 class GithubIssueTable(Base):
@@ -36,7 +35,7 @@ class GithubIssueTable(Base):
     token = Column(Integer)
 
     def __repr__(self):
-        return "<GithubIssueTable(id={}, chat={}, name='{}', status='{}', priority='{}', dependencies='{}')>".format(
+        return "<GithubIssueTable(id={}, token={})>".format(
             self.id, self.token
         )
 
