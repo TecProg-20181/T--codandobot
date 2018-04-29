@@ -24,7 +24,8 @@ HELP = """
  /priority ID PRIORITY{low, medium, high}
  /show_priority
  /my_github_token
- /send_issue TODOID {github repo} {github organization} {issue body}
+ /send_issue ID {github repo} {issue body} {github organization | 0}
+                (if your repo isn't in an organization, type "0")
  /help
  /help_github_token
 """
@@ -443,9 +444,11 @@ class Handler(object):
     def send_issue(cls, bot, update, args):
         task_id = args[0]
         repo_name = args[1]
-        organization = args[2]
-        for each_word in range(len(args[3:])):
-            issue_body += args[each_word] + ' '
+        issue_body = ''
+        organization = args[-1]
+
+        for each_word in args[2:-1]:
+            issue_body += each_word + ' '
 
         if task_id.isdigit():
             task_id = int(task_id)
@@ -457,22 +460,26 @@ class Handler(object):
             except sqlalchemy.orm.exc.NoResultFound:
                 bot.send_message(
                     chat_id=update.message.chat_id,
-                    text="Token not found 🙈")
+                    text="Token not found. 🙈")
                 return
             try:
                 task = query_task.one()
             except sqlalchemy.orm.exc.NoResultFound:
                 bot.send_message(
                     chat_id=update.message.chat_id,
-                    text="Task not found 🙈")
+                    text="Task not found. 🙈")
                 return
             github_issue = GithubIssue(github.token)
 
             issue_title = task.name
-            github_issue.make_issue(repo_name, issue_title, issue_body, organization)
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Your issue {} was send!"
-                             .format(issue_title))
+            make_issue = github_issue.make_issue(repo_name, issue_title, issue_body, organization)
+            if make_issue != 0:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="Your issue {} was send!"
+                                 .format(issue_title))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="I'm sorry. We couldn't find your repo. 🧐")
         else:
             bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+                             text="You must inform the task id.")
