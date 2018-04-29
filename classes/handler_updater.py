@@ -12,6 +12,16 @@ class HandlerUpdater(object):
         self.dispatcher = self.updater.dispatcher
 
     @classmethod
+    def __command_handlers_github(cls, task_command):
+        handler = Handler()
+        command_handler = None
+        if task_command == 'my_github_token_handler':
+            command_handler = CommandHandler('my_github_token_handler', handler.my_github_token, pass_args=True)
+        elif task_command == 'send_issue_handler':
+            command_handler = CommandHandler('send_issue', handler.send_issue, pass_args=True)
+        return command_handler
+
+    @classmethod
     def __command_handlers_show(cls, task_command):
         handler = Handler()
         command_handler = None
@@ -64,6 +74,8 @@ class HandlerUpdater(object):
         self.dispatcher.add_handler(self.__command_handlers_pass_args('done_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('dependson_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('priority_handler'))
+        self.dispatcher.add_handler(self.__command_handlers_github('my_github_token_handler'))
+        self.dispatcher.add_handler(self.__command_handlers_github('send_issue_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('show_priority_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('start_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('help_handler'))

@@ -5,7 +5,9 @@ import sys
 import logging
 import sqlalchemy
 from db import Task
+from db import GithubIssueTable
 import db
+from classes.github_issue import GithubIssue
 
 HELP = """
  /new NAME
@@ -19,6 +21,8 @@ HELP = """
  /duplicate ID
  /priority ID PRIORITY{low, medium, high}
  /show_priority
+ /my_github_token
+ /send_issue TODOID {github repo} {github organization} {issue body}
  /help
 """
 
@@ -149,11 +153,11 @@ class Handler(object):
                          priority=task.priority, duedate=task.duedate)
             db.session.add(dtask)
 
-            for t in task.dependencies.split(',')[:-1]:
-                qy = db.session.query(Task).filter_by(
-                    id=int(t), chat=update.message.chat_id)
-                t = qy.one()
-                t.parents += '{},'.format(dtask.id)
+            for each_task in task.dependencies.split(',')[:-1]:
+                each_query = db.session.query(Task).filter_by(
+                    id=int(each_task), chat=update.message.chat_id)
+                each_task = each_query.one()
+                each_task.parents += '{},'.format(dtask.id)
 
             db.session.commit()
             bot.send_message(chat_id=update.message.chat_id,
@@ -176,11 +180,11 @@ class Handler(object):
                     chat_id=update.message.chat_id,
                     text="_404_ Task {} not found 🙈".format(task_id))
                 return
-            for t in task.dependencies.split(',')[:-1]:
-                qy = db.session.query(Task).filter_by(
-                    id=int(t), chat=update.message.chat_id)
-                t = qy.one()
-                t.parents = t.parents.replace('{},'.format(task.id), '')
+            for each_task in task.dependencies.split(',')[:-1]:
+                each_query = db.session.query(Task).filter_by(
+                    id=int(each_task), chat=update.message.chat_id)
+                each_task = each_query.one()
+                each_task.parents = each_task.parents.replace('{},'.format(task.id), '')
             db.session.delete(task)
             db.session.commit()
             bot.send_message(chat_id=update.message.chat_id,
@@ -297,9 +301,9 @@ class Handler(object):
     @classmethod
     def dependson(cls, bot, update, args):
         text_rename = args[1]
-        text = args[0]
-        if text.isdigit():
-            task_id = int(text)
+        task_id = args[0]
+        if task_id.isdigit():
+            task_id = int(task_id)
             query = db.session.query(Task).filter_by(
                 id=task_id, chat=update.message.chat_id)
             try:
@@ -413,3 +417,50 @@ class Handler(object):
                 message += '[[{}]] {} | priority {}\n'.format(task.id, task.name.upper(),
                                                               task.priority.upper())
         bot.send_message(chat_id=update.message.chat_id, text=message)
+
+    @classmethod
+    def my_github_token(cls, bot, update, args):
+        token = args[0]
+        task = GithubIssueTable(id=1, token='{}'.format(token))
+        db.session.add(task)
+        db.session.commit()
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Token {} added!"
+                         .format(task.token))
+
+    @classmethod
+    def send_issue(cls, bot, update, args):
+        task_id = args[0]
+        repo_name = args[1]
+        issue_body = args[3]
+        organization = args[2]
+
+        if task_id.isdigit():
+            task_id = int(task_id)
+            github_query = db.session.query(GithubIssueTable).filter_by(id='1')
+            query_task = db.session.query(Task).filter_by(id=task_id,
+                                                          chat=update.message.chat_id)
+            try:
+                github = github_query.one()
+            except sqlalchemy.orm.exc.NoResultFound:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="Token not found 🙈")
+                return
+            try:
+                task = query_task.one()
+            except sqlalchemy.orm.exc.NoResultFound:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="Task not found 🙈")
+                return
+            github_issue = GithubIssue(github.token)
+
+            issue_title = task.name
+            github_issue.make_issue(repo_name, issue_title, issue_body, organization)
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Your issue {} was send!"
+                             .format(issue_title))
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="You must inform the task id")
