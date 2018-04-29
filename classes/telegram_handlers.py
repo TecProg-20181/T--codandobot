@@ -84,8 +84,8 @@ class Handler(object):
     @classmethod
     def new(cls, bot, update, args):
         text = ''
-        for each_word in range(len(args)):
-            text += args[each_word] + ' '
+        for each_word in args:
+            text += each_word + ' '
         task = Task(chat=update.message.chat_id, name='{}'.format(text),
                     status='TODO', dependencies='', parents='', priority='')
         db.session.add(task)
@@ -452,18 +452,16 @@ class Handler(object):
 
         if task_id.isdigit():
             task_id = int(task_id)
-            github_query = db.session.query(GithubIssueTable).filter_by(id='1')
-            query_task = db.session.query(Task).filter_by(id=task_id,
-                                                          chat=update.message.chat_id)
             try:
-                github = github_query.one()
+                github = db.session.query(GithubIssueTable).filter_by(id='1').one()
             except sqlalchemy.orm.exc.NoResultFound:
                 bot.send_message(
                     chat_id=update.message.chat_id,
                     text="Token not found. 🙈")
                 return
             try:
-                task = query_task.one()
+                task = db.session.query(Task).filter_by(id=task_id,
+                                                        chat=update.message.chat_id).one()
             except sqlalchemy.orm.exc.NoResultFound:
                 bot.send_message(
                     chat_id=update.message.chat_id,
