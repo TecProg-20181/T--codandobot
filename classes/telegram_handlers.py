@@ -19,12 +19,12 @@ HELP = """
  /delete ID
  /list
  /rename ID NAME
- /dependson ID ID...
+ /depends_on ID ID... or ID {delete} (to delete depends_on)
  /duplicate ID
  /priority ID PRIORITY{low, medium, high}
  /show_priority
  /my_github_token
- /send_issue ID {github repo} {issue body} {github organization | 0}
+ /send_issue ID {github repo} {issue body} {github organization or 0}
                 (if your repo isn't in an organization, type "0")
  /help
  /help_github_token
@@ -271,8 +271,8 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def list(cls, bot, update):
+
+    def list(self, bot, update):
         message = ''
 
         message += '📋 Task List\n'
@@ -286,7 +286,7 @@ class Handler(object):
                 icon = '✔️'
 
             message += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-            # message += cls.deps_text(cls,task=task, chat=update.message.chat_id)
+            message += self.deps_text(task=task, chat=update.message.chat_id)
 
         bot.send_message(chat_id=update.message.chat_id, text=message)
         message = ''
@@ -311,8 +311,24 @@ class Handler(object):
         bot.send_message(chat_id=update.message.chat_id, text=message)
 
     @classmethod
-    def dependson(cls, bot, update, args):
-        text_rename = args[1]
+    def a_is_in_b(cls, update, a, b):
+        out = True
+        for i in b:
+            i = str(i)
+            query = db.session.query(Task).filter_by(
+                id=i, chat=update.message.chat_id).one()
+            LOGGER.info("QUERY_BLA %s", query)
+            if any('{}'.format(a) in string for string in query.dependencies):
+                LOGGER.info("Is contained in.")
+                out = True
+            else:
+                LOGGER.info("Is not contained in.")
+                out = False
+        return out
+
+    @classmethod
+    def depends_on(cls, bot, update, args):
+        text = args[1]
         task_id = args[0]
         if task_id.isdigit():
             task_id = int(task_id)
@@ -326,7 +342,7 @@ class Handler(object):
                                  .format(task_id))
                 return
 
-            if text_rename == '':
+            if text == 'delete':
                 for i in task.dependencies.split(',')[:-1]:
                     i = int(i)
                     query_loop = db.session.query(Task).filter_by(
@@ -339,6 +355,10 @@ class Handler(object):
                 bot.send_message(chat_id=update.message.chat_id,
                                  text="Dependencies removed from task {}"
                                  .format(task_id))
+
+            elif cls.a_is_in_b(update, task_id, args[1:]):
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="{} is dependence on some of these numbers.".format(task_id))
             else:
                 depids = args
                 LOGGER.info("depids %s", depids)
