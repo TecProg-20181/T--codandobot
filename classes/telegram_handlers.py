@@ -19,7 +19,7 @@ HELP = """
  /delete ID
  /list
  /rename ID NAME
- /dependson ID ID...
+ /depends_on ID ID... or ID {delete} to delete a dependence
  /duplicate ID
  /priority ID PRIORITY{low, medium, high}
  /show_priority
@@ -311,9 +311,49 @@ class Handler(object):
         bot.send_message(chat_id=update.message.chat_id, text=message)
 
     @classmethod
-    def dependson(cls, bot, update, args):
-        text_rename = args[1]
+    def delete_dependency(cls, update, task):
+        for i in task.dependencies.split(',')[:-1]:
+            i = int(i)
+            query_loop = db.session.query(Task).filter_by(
+                id=i, chat=update.message.chat_id)
+            task_loop = query_loop.one()
+            task_loop.parents = task_loop.parents.replace(
+                '{},'.format(task.id), '')
+        task.dependencies = ''
+
+    @classmethod
+    def set_dependency(cls, depids, update, task, bot):
+        for depid in depids[1:]:
+            if depid.isdigit():
+                depid = int(depid)
+                query = db.session.query(Task).filter_by(id=depid,
+                                                            chat=update.message.chat_id)
+                try:
+                    taskdep = query.one()
+                    taskdep.parents += str(task.id) + ','
+                except sqlalchemy.orm.exc.NoResultFound:
+                    bot.send_message(
+                        chat_id=update.message.chat_id,
+                        text="_404_ Task {} not found 🙈"
+                        .format(depid))
+                    continue
+
+                deplist = task.dependencies.split(',')
+                LOGGER.info("Deplist %s", deplist)
+                if str(depid) not in deplist:
+                    task.dependencies += str(depid) + ','
+            else:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="All dependencies ids must be numeric, and not {}"
+                    .format(depid))
+
+    @classmethod
+    def depends_on(cls, bot, update, args):
+        task_delete = args[1]
         task_id = args[0]
+        LOGGER.info("log: %s", args)
+        
         if task_id.isdigit():
             task_id = int(task_id)
             query = db.session.query(Task).filter_by(
@@ -326,48 +366,17 @@ class Handler(object):
                                  .format(task_id))
                 return
 
-            if text_rename == '':
-                for i in task.dependencies.split(',')[:-1]:
-                    i = int(i)
-                    query_loop = db.session.query(Task).filter_by(
-                        id=i, chat=update.message.chat_id)
-                    task_loop = query_loop.one()
-                    task_loop.parents = task_loop.parents.replace(
-                        '{},'.format(task.id), '')
-
-                task.dependencies = ''
+            if task_delete == 'delete':
+                cls.delete_dependency(update, task)
                 bot.send_message(chat_id=update.message.chat_id,
-                                 text="Dependencies removed from task {}"
-                                 .format(task_id))
+                                            text="Dependencies removed from task {}"
+                                            .format(task_id))
             else:
                 depids = args
                 LOGGER.info("depids %s", depids)
                 LOGGER.info("depids next %s", depids[1:])
 
-                for depid in depids[1:]:
-                    if depid.isdigit():
-                        depid = int(depid)
-                        query = db.session.query(Task).filter_by(id=depid,
-                                                                 chat=update.message.chat_id)
-                        try:
-                            taskdep = query.one()
-                            taskdep.parents += str(task.id) + ','
-                        except sqlalchemy.orm.exc.NoResultFound:
-                            bot.send_message(
-                                chat_id=update.message.chat_id,
-                                text="_404_ Task {} not found 🙈"
-                                .format(depid))
-                            continue
-
-                        deplist = task.dependencies.split(',')
-                        LOGGER.info("Deplist %s", deplist)
-                        if str(depid) not in deplist:
-                            task.dependencies += str(depid) + ','
-                    else:
-                        bot.send_message(
-                            chat_id=update.message.chat_id,
-                            text="All dependencies ids must be numeric, and not {}"
-                            .format(depid))
+                cls.set_dependency(depids, update, task, bot)
 
             db.session.commit()
             bot.send_message(

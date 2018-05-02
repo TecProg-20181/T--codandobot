@@ -61,8 +61,8 @@ class HandlerUpdater(object):
         elif task_command == 'priority_handler':
             command_handler = CommandHandler('priority', handler.priority,
                                              pass_args=True)
-        elif task_command == 'dependson_handler':
-            command_handler = CommandHandler('dependson', handler.dependson,
+        elif task_command == 'depends_on_handler':
+            command_handler = CommandHandler('depends_on', handler.depends_on,
                                              pass_args=True)
         return command_handler
 
@@ -74,7 +74,7 @@ class HandlerUpdater(object):
         self.dispatcher.add_handler(self.__command_handlers_pass_args('todo_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('doing_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('done_handler'))
-        self.dispatcher.add_handler(self.__command_handlers_pass_args('dependson_handler'))
+        self.dispatcher.add_handler(self.__command_handlers_pass_args('depends_on_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('priority_handler'))
         self.dispatcher.add_handler(self.__command_handlers_github('my_github_token_handler'))
         self.dispatcher.add_handler(self.__command_handlers_github('send_issue_handler'))
