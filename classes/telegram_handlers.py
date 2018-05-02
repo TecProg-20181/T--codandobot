@@ -4,10 +4,10 @@
 import sys
 import logging
 import sqlalchemy
-from db import Task
-from db import GithubIssueTable
+from db import GithubIssueTable, Task
 import db
 from classes.github_issue import GithubIssue
+from classes.services import Services
 
 TUTORIAL = "https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/"
 
@@ -36,44 +36,42 @@ LOGGER = logging.getLogger('root')
 LOGGER.info("Running %s", sys.argv[0])
 
 class Handler(object):
-
-    def deps_text(self, task, chat, preceed=''):
-        text = ''
-
-        for i in range(len(task.dependencies.split(',')[:-1])):
-            line = preceed
-            query = db.session.query(Task).filter_by(
-                id=int(task.dependencies.split(',')[:-1][i]), chat=chat)
-            dep = query.one()
-
-            icon = '🆕'
-            if dep.status == 'DOING':
-                icon = '🔘'
-            elif dep.status == 'DONE':
-                icon = '✔️'
-
-            if i + 1 == len(task.dependencies.split(',')[:-1]):
-                line += '└── [[{}]] {} {}\n'.format(dep.id, icon, dep.name)
-                line += self.deps_text(dep, chat, preceed + '    ')
-            else:
-                line += '├── [[{}]] {} {}\n'.format(dep.id, icon, dep.name)
-                line += self.deps_text(dep, chat, preceed + '│   ')
-
-            text += line
-
-        return text
+    def __init__(self):
+        self.services = Services()
 
     @classmethod
-    def get_name(cls, update):
-        try:
-            name = update.message.from_user.first_name
-        except (NameError, AttributeError):
-            try:
-                name = update.message.from_user.username
-            except (NameError, AttributeError):
-                LOGGER.info("No username or first name..")
-                return ""
-        return name
+    def __delete_dependency(cls, update, task):
+        for i in task.dependencies.split(',')[:-1]:
+            i = int(i)
+            query_loop = db.session.query(Task).filter_by(
+                id=i, chat=update.message.chat_id)
+            task_loop = query_loop.one()
+            task_loop.parents = task_loop.parents.replace(
+                '{},'.format(task.id), '')
+        task.dependencies = ''
+
+    def __set_dependency(self, depids, update, task, bot):
+        for depid in depids[1:]:
+            if depid.isdigit():
+                depid = int(depid)
+                query = db.session.query(Task).filter_by(id=depid,
+                                                         chat=update.message.chat_id)
+                try:
+                    taskdep = query.one()
+                    taskdep.parents += str(task.id) + ','
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, depid)
+                    continue
+
+                deplist = task.dependencies.split(',')
+                LOGGER.info("Deplist %s", deplist)
+                if str(depid) not in deplist:
+                    task.dependencies += str(depid) + ','
+            else:
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="All dependencies ids must be numeric, and not {}"
+                    .format(depid))
 
     @classmethod
     def start(cls, bot, update):
@@ -94,11 +92,10 @@ class Handler(object):
                          text="New task *TODO* [[{}]] {}"
                          .format(task.id, task.name))
 
-    @classmethod
-    def echo(cls, bot, update):
+    def echo(self, bot, update):
         bot.send_message(chat_id=update.message.chat_id,
                          text="I'm sorry, {}. I'm afraid I can't do {}."
-                         .format(cls.get_name(update), update.message.text))
+                         .format(self.services.get_name(update), update.message.text))
         bot.send_message(chat_id=update.message.chat_id, text="{}".format(HELP))
 
     @classmethod
@@ -112,8 +109,7 @@ class Handler(object):
         bot.send_message(chat_id=update.message.chat_id,
                          text="To get your token, follow this tutorial:\n{}".format(TUTORIAL))
 
-    @classmethod
-    def rename(cls, bot, update, args):
+    def rename(self, bot, update, args):
         text_rename = args[1]
         text = args[0]
 
@@ -124,14 +120,13 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text="_404_ Task {} not found 🙈"
-                                 .format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
 
             if text_rename == '':
                 bot.send_message(chat_id=update.message.chat_id,
-                                 text="You want to modify task {}, but you didn't provide any new text"
+                                 text=("You want to modify task {}," +
+                                       " but you didn't provide any new text")
                                  .format(task_id))
                 return
 
@@ -146,8 +141,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def duplicate(cls, bot, update, args):
+    def duplicate(self, bot, update, args):
         if args[0].isdigit():
             task_id = int(args[0])
             query = db.session.query(Task).filter_by(
@@ -155,9 +149,7 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="_404_ Task {} not found 🙈".format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
 
             dtask = Task(chat=task.chat, name=task.name, status=task.status,
@@ -179,8 +171,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def delete(cls, bot, update, args):
+    def delete(self, bot, update, args):
         if args[0].isdigit():
             task_id = int(args[0])
             query = db.session.query(Task).filter_by(
@@ -188,9 +179,7 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="_404_ Task {} not found 🙈".format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
             for each_task in task.dependencies.split(',')[:-1]:
                 each_query = db.session.query(Task).filter_by(
@@ -205,8 +194,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def todo(cls, bot, update, args):
+    def todo(self, bot, update, args):
         if args[0].isdigit():
             task_id = int(args[0])
             query = db.session.query(Task).filter_by(
@@ -214,9 +202,7 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="_404_ Task {} not found 🙈".format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
             task.status = 'TODO'
             db.session.commit()
@@ -227,8 +213,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def doing(cls, bot, update, args):
+    def doing(self, bot, update, args):
         if args[0].isdigit():
             task_id = int(args[0])
             query = db.session.query(Task).filter_by(
@@ -236,9 +221,7 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="_404_ Task {} not found 🙈".format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
             task.status = 'DOING'
             db.session.commit()
@@ -249,8 +232,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def done(cls, bot, update, args):
+    def done(self, bot, update, args):
         if args[0].isdigit():
             task_id = int(args[0])
             query = db.session.query(Task).filter_by(
@@ -258,9 +240,7 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="_404_ Task {} not found 🙈".format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
             task.status = 'DONE'
             db.session.commit()
@@ -286,7 +266,7 @@ class Handler(object):
                 icon = '✔️'
 
             message += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-            message += self.deps_text(task=task, chat=update.message.chat_id)
+            message += self.services.deps_text(task=task, chat=update.message.chat_id)
 
         bot.send_message(chat_id=update.message.chat_id, text=message)
         message = ''
@@ -310,64 +290,7 @@ class Handler(object):
 
         bot.send_message(chat_id=update.message.chat_id, text=message)
 
-    @classmethod
-    def a_is_in_b(cls, update, a, b):
-        out = True
-        for i in b:
-            i = str(i)
-            query = db.session.query(Task).filter_by(
-                id=i, chat=update.message.chat_id).one()
-            LOGGER.info("QUERY_BLA %s", query)
-            if any('{}'.format(a) in string for string in query.dependencies):
-                LOGGER.info("Is contained in.")
-                out = True
-                break
-            else:
-                LOGGER.info("Is not contained in.")
-                out = False
-                continue
-        return out
-
-    @classmethod
-    def delete_dependency(cls, update, task):
-        for i in task.dependencies.split(',')[:-1]:
-            i = int(i)
-            query_loop = db.session.query(Task).filter_by(
-                id=i, chat=update.message.chat_id)
-            task_loop = query_loop.one()
-            task_loop.parents = task_loop.parents.replace(
-                '{},'.format(task.id), '')
-        task.dependencies = ''
-
-    @classmethod
-    def set_dependency(cls, depids, update, task, bot):
-        for depid in depids[1:]:
-            if depid.isdigit():
-                depid = int(depid)
-                query = db.session.query(Task).filter_by(id=depid,
-                                                            chat=update.message.chat_id)
-                try:
-                    taskdep = query.one()
-                    taskdep.parents += str(task.id) + ','
-                except sqlalchemy.orm.exc.NoResultFound:
-                    bot.send_message(
-                        chat_id=update.message.chat_id,
-                        text="_404_ Task {} not found 🙈"
-                        .format(depid))
-                    continue
-
-                deplist = task.dependencies.split(',')
-                LOGGER.info("Deplist %s", deplist)
-                if str(depid) not in deplist:
-                    task.dependencies += str(depid) + ','
-            else:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="All dependencies ids must be numeric, and not {}"
-                    .format(depid))
-
-    @classmethod
-    def depends_on(cls, bot, update, args):
+    def depends_on(self, bot, update, args):
         task_delete = args[1]
         task_id = args[0]
         LOGGER.info("log: %s", args)
@@ -379,17 +302,15 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text="_404_ Task {} not found 🙈"
-                                 .format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
 
             if task_delete == 'delete':
-                cls.delete_dependency(update, task)
+                self.__delete_dependency(update, task)
                 bot.send_message(chat_id=update.message.chat_id,
-                                            text="Dependencies removed from task {}"
-                                            .format(task_id))
-            elif cls.a_is_in_b(update, task_id, args[1:]):
+                                 text="Dependencies removed from task {}"
+                                 .format(task_id))
+            elif self.services.a_is_in_b(update, task_id, args[1:]):
                 bot.send_message(chat_id=update.message.chat_id,
                                  text="{} is dependence on some of these numbers.".format(task_id))
             else:
@@ -397,7 +318,7 @@ class Handler(object):
                 LOGGER.info("depids %s", depids)
                 LOGGER.info("depids next %s", depids[1:])
 
-                cls.set_dependency(depids, update, task, bot)
+                self.__set_dependency(depids, update, task, bot)
 
             db.session.commit()
             bot.send_message(
@@ -426,9 +347,7 @@ class Handler(object):
             try:
                 task = query.one()
             except sqlalchemy.orm.exc.NoResultFound:
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="_404_ Task {} not found 🙈".format(task_id))
+                self.services.not_found_message(bot, update, task_id)
                 return
 
             if text_rename == '':
@@ -439,7 +358,8 @@ class Handler(object):
                     .format(task_id))
             else:
                 if text_rename.lower() not in ['high', 'medium', 'low']:
-                    bot.send_message("The priority *must be* one of the following: high, medium, low")
+                    bot.send_message("The priority *must be* one of" +
+                                     " the following: high, medium, low")
                 else:
                     task.priority = text_rename.lower()
                     bot.send_message(chat_id=update.message.chat_id,
