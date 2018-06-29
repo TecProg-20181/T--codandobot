@@ -177,7 +177,6 @@ class Handler(object):
         for i in args:
             if i.isdigit():
                 task_id = int(i)
-                task_id = int(args[0])
                 query = db.session.query(Task).filter_by(
                     id=task_id, chat=update.message.chat_id)
                 try:
@@ -438,7 +437,8 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id.")
 
-    def add_date(self, bot, update, args):
+    @classmethod
+    def add_date(cls, bot, update, args):
         if args[0].isdigit():
             update.message.reply_text("Please select a date: ",
                                       reply_markup=TelegramCalendar().create_calendar(args[0]))
@@ -446,8 +446,8 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id.")
 
-
-    def add_date_function(self, bot, update):
+    @classmethod
+    def add_date_function(cls, bot, update):
         selected, date = TelegramCalendar().process_calendar_selection(bot, update)
         if selected:
             bot.send_message(chat_id=update.callback_query.from_user.id,
