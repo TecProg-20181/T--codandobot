@@ -3,13 +3,11 @@
 
 import sys
 import logging
-import calendar
-import datetime
 import sqlalchemy
-from classes.telegramcalendar import TelegramCalendar
-from telegram import  ReplyKeyboardRemove
+from telegram import ReplyKeyboardRemove
 from db import GithubIssueTable, Task
 import db
+from classes.telegramcalendar import TelegramCalendar
 from classes.github_issue import GithubIssue
 from classes.services import Services
 
@@ -39,7 +37,6 @@ FORMAT = '%(asctime)s -- %(levelname)s -- %(module)s %(lineno)d -- %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 LOGGER = logging.getLogger('root')
 LOGGER.info("Running %s", sys.argv[0])
-bla = ''
 class Handler(object):
     def __init__(self):
         self.services = Services()
@@ -443,6 +440,9 @@ class Handler(object):
         if args[0].isdigit():
             update.message.reply_text("Please select a date: ",
                                       reply_markup=TelegramCalendar().create_calendar(args[0]))
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="You must inform the task id.")
 
 
     def add_date_function(self, bot, update):
