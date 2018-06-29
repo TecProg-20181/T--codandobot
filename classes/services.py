@@ -48,26 +48,49 @@ class Services(object):
                 return ""
         return name
 
-    @classmethod
-    def a_is_in_b(cls, update, a, b):
-        out = True
-        for i in b:
-            i = str(i)
-            query = db.session.query(Task).filter_by(
-                id=i, chat=update.message.chat_id).one()
-            LOGGER.info("QUERY_BLA %s", query)
-            if any('{}'.format(a) in string for string in query.dependencies):
-                LOGGER.info("Is contained in.")
-                out = True
-                break
-            else:
-                LOGGER.info("Is not contained in.")
-                out = False
-                continue
-        return out
+    # @classmethod
+    # def a_is_in_b(cls, update, a, b):
+    #     out = True
+    #     for i in b:
+    #         i = str(i)
+    #         query = db.session.query(Task).filter_by(
+    #             id=i, chat=update.message.chat_id).one()
+    #         LOGGER.info("QUERY_BLA %s", query)
+    #         if any('{}'.format(a) in string for string in query.dependencies):
+    #             LOGGER.info("Is contained in.")
+    #             out = True
+    #             break
+    #         else:
+    #             LOGGER.info("Is not contained in.")
+    #             out = False
+    #             continue
+    #     return out
 
     @classmethod
     def not_found_message(cls, bot, update, task_id):
         bot.send_message(
             chat_id=update.message.chat_id,
             text="_404_ Task {} not found 🙈".format(task_id))
+
+    @classmethod
+    def a_is_in_b(cls, update, dependency_id, task_id):
+        
+        is_circular = False
+        task = db.session.query(Task).filter_by(
+                id=dependency_id, chat=update.message.chat_id).one()
+        dependencies = task.dependencies.split(',')
+
+        for i in dependencies:
+            if i == '':
+                continue
+            query = db.session.query(Task).filter_by(
+                id=i, chat=update.message.chat_id).one()
+
+            another_dependency = dependency.dependencies.split(',')
+            if task.id in another_dependency:
+                is_circular = True
+            else:
+                partial = __verify_circular_dependency_in_list(task_id, query.id, chat_id)
+                is_circular = is_circular | partial
+
+        return is_circular
