@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from telegram.ext import CommandHandler, Updater
+from telegram.ext import CommandHandler, Updater, CallbackQueryHandler
 from telegram.ext import MessageHandler, Filters
 from classes.telegram_handlers import Handler
 
@@ -64,6 +64,17 @@ class HandlerUpdater(object):
         elif task_command == 'depends_on_handler':
             command_handler = CommandHandler('depends_on', handler.depends_on,
                                              pass_args=True)
+        elif task_command == 'add_date_handler':
+            command_handler = CommandHandler('add_date', handler.add_date,
+                                             pass_args=True)
+        return command_handler
+
+    @classmethod
+    def __command_handlers_callback(cls, task_command):
+        handler = Handler()
+        command_handler = None
+        if task_command == 'add_date_callback':
+            command_handler = CallbackQueryHandler(handler.add_date_function)
         return command_handler
 
     def add_handlers(self):
@@ -76,6 +87,7 @@ class HandlerUpdater(object):
         self.dispatcher.add_handler(self.__command_handlers_pass_args('done_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('depends_on_handler'))
         self.dispatcher.add_handler(self.__command_handlers_pass_args('priority_handler'))
+        self.dispatcher.add_handler(self.__command_handlers_pass_args('add_date_handler'))
         self.dispatcher.add_handler(self.__command_handlers_github('my_github_token_handler'))
         self.dispatcher.add_handler(self.__command_handlers_github('send_issue_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('help_github_token_handler'))
@@ -84,6 +96,7 @@ class HandlerUpdater(object):
         self.dispatcher.add_handler(self.__command_handlers_show('help_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('list_handler'))
         self.dispatcher.add_handler(self.__command_handlers_show('echo_handler'))
+        self.dispatcher.add_handler(self.__command_handlers_callback('add_date_callback'))
 
     def updater_start_polling(self):
         self.updater.start_polling()

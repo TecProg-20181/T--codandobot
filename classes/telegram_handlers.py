@@ -3,7 +3,11 @@
 
 import sys
 import logging
+import calendar
+import datetime
 import sqlalchemy
+from classes.telegramcalendar import TelegramCalendar
+from telegram import  ReplyKeyboardRemove
 from db import GithubIssueTable, Task
 import db
 from classes.github_issue import GithubIssue
@@ -16,6 +20,7 @@ HELP = """
  /todo ID
  /doing ID
  /done ID
+ /add_date ID
  /delete ID
  /list
  /rename ID NAME
@@ -34,7 +39,7 @@ FORMAT = '%(asctime)s -- %(levelname)s -- %(module)s %(lineno)d -- %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 LOGGER = logging.getLogger('root')
 LOGGER.info("Running %s", sys.argv[0])
-
+bla = ''
 class Handler(object):
     def __init__(self):
         self.services = Services()
@@ -276,7 +281,10 @@ class Handler(object):
             status='TODO', chat=update.message.chat_id).order_by(Task.id)
         message += '\n🆕 *TODO*\n'
         for task in query.all():
-            message += '[[{}]] {}\n'.format(task.id, task.name)
+            if task.duedate != None:
+                message += '[[{}]] {} -- Delivery date: {}\n'.format(task.id, task.name, task.duedate)
+            else:
+                message += '[[{}]] {}\n'.format(task.id, task.name)
         query = db.session.query(Task).filter_by(
             status='DOING', chat=update.message.chat_id).order_by(Task.id)
         message += '\n🔘 *DOING*\n'
@@ -328,8 +336,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def priority(cls, bot, update, args):
+    def priority(self, bot, update, args):
         text_rename = args[1]
         text = args[0]
         if text != '':
@@ -431,3 +438,16 @@ class Handler(object):
         else:
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id.")
+
+    def add_date(self, bot, update, args):
+        if args[0].isdigit():
+            update.message.reply_text("Please select a date: ",
+                                      reply_markup=TelegramCalendar().create_calendar(args[0]))
+
+
+    def add_date_function(self, bot, update):
+        selected, date = TelegramCalendar().process_calendar_selection(bot, update)
+        if selected:
+            bot.send_message(chat_id=update.callback_query.from_user.id,
+                             text="You selected %s" % (date.strftime("%Y-%m-%d")),
+                             reply_markup=ReplyKeyboardRemove())
