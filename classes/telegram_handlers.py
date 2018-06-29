@@ -4,8 +4,10 @@
 import sys
 import logging
 import sqlalchemy
+from telegram import ReplyKeyboardRemove
 from db import GithubIssueTable, Task
 import db
+from classes.telegramcalendar import TelegramCalendar
 from classes.github_issue import GithubIssue
 from classes.services import Services
 
@@ -16,6 +18,7 @@ HELP = """
  /todo ID
  /doing ID
  /done ID
+ /add_date ID
  /delete ID
  /list
  /rename ID NAME
@@ -34,7 +37,6 @@ FORMAT = '%(asctime)s -- %(levelname)s -- %(module)s %(lineno)d -- %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 LOGGER = logging.getLogger('root')
 LOGGER.info("Running %s", sys.argv[0])
-
 class Handler(object):
     def __init__(self):
         self.services = Services()
@@ -172,84 +174,89 @@ class Handler(object):
                              text="You must inform the task id")
 
     def delete(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            for each_task in task.dependencies.split(',')[:-1]:
-                each_query = db.session.query(Task).filter_by(
-                    id=int(each_task), chat=update.message.chat_id)
-                each_task = each_query.one()
-                each_task.parents = each_task.parents.replace('{},'.format(task.id), '')
-            db.session.delete(task)
-            db.session.commit()
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Task [[{}]] deleted".format(task_id))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                task_id = int(args[0])
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                for each_task in task.dependencies.split(',')[:-1]:
+                    each_query = db.session.query(Task).filter_by(
+                        id=int(each_task), chat=update.message.chat_id)
+                    each_task = each_query.one()
+                    each_task.parents = each_task.parents.replace('{},'.format(task.id), '')
+                db.session.delete(task)
+                db.session.commit()
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="Task [[{}]] deleted".format(task_id))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
     def todo(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            task.status = 'TODO'
-            db.session.commit()
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text="*TODO* task [[{}]] {}".format(task.id, task.name))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                task.status = 'TODO'
+                db.session.commit()
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="*TODO* task [[{}]] {}".format(task.id, task.name))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
     def doing(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            task.status = 'DOING'
-            db.session.commit()
-            bot.send_message(
-                chat_id=update.message.chat_id, text="*DOING* task [[{}]] {}"
-                .format(task.id, task.name))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                task.status = 'DOING'
+                db.session.commit()
+                bot.send_message(
+                    chat_id=update.message.chat_id, text="*DOING* task [[{}]] {}"
+                    .format(task.id, task.name))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
     def done(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            task.status = 'DONE'
-            db.session.commit()
-            bot.send_message(
-                chat_id=update.message.chat_id, text="*DONE* task [[{}]] {}"
-                .format(task.id, task.name))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                task.status = 'DONE'
+                db.session.commit()
+                bot.send_message(
+                    chat_id=update.message.chat_id, text="*DONE* task [[{}]] {}"
+                    .format(task.id, task.name))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
 
     def list(self, bot, update):
@@ -276,7 +283,10 @@ class Handler(object):
             status='TODO', chat=update.message.chat_id).order_by(Task.id)
         message += '\n🆕 *TODO*\n'
         for task in query.all():
-            message += '[[{}]] {}\n'.format(task.id, task.name)
+            if task.duedate != None:
+                message += '[[{}]] {} -- Delivery date: {}\n'.format(task.id, task.name, task.duedate)
+            else:
+                message += '[[{}]] {}\n'.format(task.id, task.name)
         query = db.session.query(Task).filter_by(
             status='DOING', chat=update.message.chat_id).order_by(Task.id)
         message += '\n🔘 *DOING*\n'
@@ -325,8 +335,7 @@ class Handler(object):
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id")
 
-    @classmethod
-    def priority(cls, bot, update, args):
+    def priority(self, bot, update, args):
         text_rename = args[1]
         text = args[0]
         if text != '':
@@ -428,3 +437,19 @@ class Handler(object):
         else:
             bot.send_message(chat_id=update.message.chat_id,
                              text="You must inform the task id.")
+
+    def add_date(self, bot, update, args):
+        if args[0].isdigit():
+            update.message.reply_text("Please select a date: ",
+                                      reply_markup=TelegramCalendar().create_calendar(args[0]))
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="You must inform the task id.")
+
+
+    def add_date_function(self, bot, update):
+        selected, date = TelegramCalendar().process_calendar_selection(bot, update)
+        if selected:
+            bot.send_message(chat_id=update.callback_query.from_user.id,
+                             text="You selected %s" % (date.strftime("%Y-%m-%d")),
+                             reply_markup=ReplyKeyboardRemove())
