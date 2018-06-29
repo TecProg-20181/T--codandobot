@@ -174,84 +174,89 @@ class Handler(object):
                              text="You must inform the task id")
 
     def delete(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            for each_task in task.dependencies.split(',')[:-1]:
-                each_query = db.session.query(Task).filter_by(
-                    id=int(each_task), chat=update.message.chat_id)
-                each_task = each_query.one()
-                each_task.parents = each_task.parents.replace('{},'.format(task.id), '')
-            db.session.delete(task)
-            db.session.commit()
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Task [[{}]] deleted".format(task_id))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                task_id = int(args[0])
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                for each_task in task.dependencies.split(',')[:-1]:
+                    each_query = db.session.query(Task).filter_by(
+                        id=int(each_task), chat=update.message.chat_id)
+                    each_task = each_query.one()
+                    each_task.parents = each_task.parents.replace('{},'.format(task.id), '')
+                db.session.delete(task)
+                db.session.commit()
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="Task [[{}]] deleted".format(task_id))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
     def todo(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            task.status = 'TODO'
-            db.session.commit()
-            bot.send_message(
-                chat_id=update.message.chat_id,
-                text="*TODO* task [[{}]] {}".format(task.id, task.name))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                task.status = 'TODO'
+                db.session.commit()
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="*TODO* task [[{}]] {}".format(task.id, task.name))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
     def doing(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            task.status = 'DOING'
-            db.session.commit()
-            bot.send_message(
-                chat_id=update.message.chat_id, text="*DOING* task [[{}]] {}"
-                .format(task.id, task.name))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                task.status = 'DOING'
+                db.session.commit()
+                bot.send_message(
+                    chat_id=update.message.chat_id, text="*DOING* task [[{}]] {}"
+                    .format(task.id, task.name))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
     def done(self, bot, update, args):
-        if args[0].isdigit():
-            task_id = int(args[0])
-            query = db.session.query(Task).filter_by(
-                id=task_id, chat=update.message.chat_id)
-            try:
-                task = query.one()
-            except sqlalchemy.orm.exc.NoResultFound:
-                self.services.not_found_message(bot, update, task_id)
-                return
-            task.status = 'DONE'
-            db.session.commit()
-            bot.send_message(
-                chat_id=update.message.chat_id, text="*DONE* task [[{}]] {}"
-                .format(task.id, task.name))
-        else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="You must inform the task id")
+        for i in args:
+            if i.isdigit():
+                task_id = int(i)
+                query = db.session.query(Task).filter_by(
+                    id=task_id, chat=update.message.chat_id)
+                try:
+                    task = query.one()
+                except sqlalchemy.orm.exc.NoResultFound:
+                    self.services.not_found_message(bot, update, task_id)
+                    return
+                task.status = 'DONE'
+                db.session.commit()
+                bot.send_message(
+                    chat_id=update.message.chat_id, text="*DONE* task [[{}]] {}"
+                    .format(task.id, task.name))
+            else:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text="You must inform the task id")
 
 
     def list(self, bot, update):
