@@ -49,22 +49,24 @@ class Services(object):
         return name
 
     @classmethod
-    def a_is_in_b(cls, update, a, b):
-        out = True
-        for i in b:
-            i = str(i)
-            query = db.session.query(Task).filter_by(
-                id=i, chat=update.message.chat_id).one()
-            LOGGER.info("QUERY_BLA %s", query)
-            if any('{}'.format(a) in string for string in query.dependencies):
-                LOGGER.info("Is contained in.")
-                out = True
-                break
+    def a_is_in_b(self, update, dependency_id, task):
+        if task.parents != '':
+
+            task_id = task.parents.split(',')
+            task_id.pop()
+
+            dependency_list = [int(id) for id in task_id]
+
+            if dependency_id in dependency_list:
+                return True
             else:
-                LOGGER.info("Is not contained in.")
-                out = False
-                continue
-        return out
+                query = db.session.query(Task).filter_by(id=dependency_list[0],
+                                                chat=update.message.chat_id).one()
+                
+                task_id = query.one()
+                return self.a_is_in_b(update, task_id, task)
+
+        return False
 
     @classmethod
     def not_found_message(cls, bot, update, task_id):

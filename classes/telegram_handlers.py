@@ -57,7 +57,7 @@ class Handler(object):
             if depid.isdigit():
                 depid = int(depid)
                 query = db.session.query(Task).filter_by(id=depid,
-                                                         chat=update.message.chat_id)
+                chat=update.message.chat_id)
                 try:
                     taskdep = query.one()
                     taskdep.parents += str(task.id) + ','
@@ -67,8 +67,14 @@ class Handler(object):
 
                 deplist = task.dependencies.split(',')
                 LOGGER.info("Deplist %s", deplist)
-                if str(depid) not in deplist:
+                if not self.services.a_is_in_b(update, depid, task):
                     task.dependencies += str(depid) + ','
+                    bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="Task {} dependencies up to date".format(depid))
+                else:
+                    bot.send_message(chat_id=update.message.chat_id,
+                        text="{} is dependence on some of these numbers.".format(depid))
             else:
                 bot.send_message(
                     chat_id=update.message.chat_id,
@@ -320,9 +326,6 @@ class Handler(object):
                 bot.send_message(chat_id=update.message.chat_id,
                                  text="Dependencies removed from task {}"
                                  .format(task_id))
-            elif self.services.a_is_in_b(update, task_id, args[1:]):
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text="{} is dependence on some of these numbers.".format(task_id))
             else:
                 depids = args
                 LOGGER.info("depids %s", depids)
